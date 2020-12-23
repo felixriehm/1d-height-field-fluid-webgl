@@ -16,10 +16,10 @@
     <div class="container">
         <h1>1D Height Field Fluid</h1>
         <div class="description">
-            This is a 1D implementaion of Mathias Müller Height Field Fluid algorithm. Based on the 2D wave equation
+            This is a 1D implementaion of <a href="https://matthias-research.github.io/pages/publications/publications.html">Matthias Müllers</a> Height Field Fluid algorithm presented at the <a href="https://www.gdcvault.com/play/203/Fast-Water-Simulation-for-Games">Games Developers Conference 2008</a>. It is based on the 2D wave equation
             $$ u_{tt}=c^2\nabla^2u $$
             in form of a partial differential equation of second order. \( u_{tt}=c^2u_{xx} \) for the 1D case.<br>
-            In short, the algoorithm steps are based on particle calculations in respect to Newtons second law of
+            In short, the algorithm steps are based on particle calculations in respect to Newtons second law of
             motion \( a=f/m \)
             <pre>
                 <code>
@@ -30,90 +30,130 @@
                     ENDLOOP
                 </code>
             </pre>
-            which translates to
+            which translates to the actual program code
             <pre>
                 <code>
                     FORALL i
-                        f = c2*(u[i-1] + u[i+1] – 2u[i])/h^2
+                        f = c^2*(u[i-1] + u[i+1] – 2u[i])/h^2
                         v[i] = v[i] + f*dt
                         u_new[i] = u[i] + v[i]*dt
                     ENDFOR
                     u = u_new
                  </code>
              </pre>
-            This implementaion uses WebGL. Feel free to change the parameters.
+            This implementaion uses WebGL and was build with the help of <a href="https://webglfundamentals.org/">webglfundamentals.org</a>. Feel free to change the parameters.
         </div>
         <hr>
         <h2>Parameters</h2>
         <div class="inputs">
             <label>Canvas height:&nbsp;</label><span id="canvasHeight"></span>&nbsp;&nbsp;&nbsp;&nbsp;
             <label>Canvas width:&nbsp;</label><span id="canvasWidth"></span><br><br>
-            <label for="initialWaterHeight">initial water height:</label>
-            <input type="number" id="initialWaterHeight" name="initialWaterHeight" type=number step=1 min=10><br><br>
-            <label for="waveColumnsCount">wave columns count:</label>
-            <input type="number" id="waveColumnsCount" name="waveColumnsCount" type=number step=0.01 min=10><br><br>
-            <label for="waveVelocity">c (wave velocity, condition: c &lt; h/dt):</label>
-            <input type="number" id="waveVelocity" name="waveVelocity" type=number step=0.01 min=0.01><br><br>
-            <label>h (wave column width):&nbsp;</label id="waveColumnsWidth"><span id="waveColumsWidth"></span><br><br>
-            <label for="dampingScaling">s (damping scaling, condition: s &lt; 1, smaller dt results in a stronger
-                effect):</label>
-            <input type="number" id="dampingScaling" name="dampingScaling" type=number step=0.01 min=0.01 max=1><br><br>
-            <label for="deltaTime">dt (simulation delta time, condition: dt &lt; h/c):</label>
-            <input type="number" id="deltaTime" name="deltaTime" type=number step=0.01 min=0.01 max=1><br><br>
-            <label>Boundary condition:</label>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio1"
-                    value="option1" checked>
-                <label class="form-check-label" for="inlineRadio1">Reflacting</label>
+            <div class="mb-3 row">
+                <label class="col-5 col-form-label" for="initialWaterHeight">Initial water height:</label>
+                <div class="col-7">
+                    <input class="form-control" type="number" id="initialWaterHeight" name="initialWaterHeight" type=number min=10>
+                </div>
             </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio2"
-                    value="option2">
-                <label class="form-check-label" for="inlineRadio2">Wraping</label>
+            <div class="mb-3 row">
+                <label class="col-5 col-form-label" for="waveColumnsCount">Wave columns count:</label>
+                <div class="col-7">
+                    <input class="form-control" type="number" id="waveColumnsCount" name="waveColumnsCount" type=number min=10>
+                </div>
             </div>
-            <br><br>
-            <button id="applyButton" onclick="" class="btn btn-outline-primary">Apply</button>
+            <div class="mb-3 row">
+                <label class="col-5 col-form-label" for="waveVelocity">c (wave velocity, condition: c &lt; h/dt):</label>
+                <div class="col-7">
+                    <input class="form-control" type="number" id="waveVelocity" name="waveVelocity" type=number step=0.01 min=0.01>
+                </div>
+            </div>
+            <div class="mb-3 row">
+                <label class="col-5 col-form-label">h (wave column width):</label>
+                <div class="col-7">
+                    <input class="form-control-plaintext" type="text" readonly id="waveColumsWidth">
+                </div>
+            </div>
+            <div class="mb-3 row">
+                <label class="col-5 col-form-label" for="dampingScaling">s (damping scaling, condition: s &lt; 1, smaller dt results in a stronger
+                    effect):</label>
+                <div class="col-7">
+                    <input class="form-control" type="number" id="dampingScaling" name="dampingScaling" type=number step=0.01 min=0.01 max=1>
+                </div>
+            </div>
+            <div class="mb-3 row">
+                <label class="col-5 col-form-label" for="deltaTime">dt (simulation delta time, condition: dt &lt; h/c):</label>
+                <div class="col-7">
+                    <input class="form-control" type="number" id="deltaTime" name="deltaTime" type=number step=0.01 min=0.01>
+                </div>
+            </div>
+            <div class="mb-3 row">
+                <label class="col-5 col-form-label">Boundary condition:</label>
+                <div class="col-7 col-form-label">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="inlineRadioOptions" id="boundaryReflacting" value="option1"
+                            checked>
+                        <label class="form-check-label" for="boundaryReflacting">Reflacting</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="inlineRadioOptions" id="boundaryWraping"
+                            value="option2">
+                        <label class="form-check-label" for="boundaryWraping">Wraping</label>
+                    </div>
+                </div>
+            </div>
+            <label class="mb-3">Create wave by:</label>
+            <div class="mb-3 row">
+                <div class="col-5 col-form-label">
+                    <input class="form-check-input" type="radio" name="exampleRadios" id="changeHeightRadio" value="option1"
+                    checked>
+                    <label class="form-check-label" for="changeHeightRadio">
+                        Adding water (changing height)
+                    </label>
+                </div>
+                <div class="col-7">
+                    <input class="form-control" type="number" id="changeHeight" name="changeHeight" type=number min=1>
+                </div>
+            </div>
+            <div class="mb-3 row">
+                <div class="col-5 col-form-label">
+                    <input class="form-check-input" type="radio" name="exampleRadios" id="changeForceRadio" value="option2">
+                    <label class="form-check-label" for="changeForceRadio">
+                        Applying force (changing velocity)
+                    </label>
+                </div>
+                <div class="col-7">
+                    <input class="form-control" type="number" id="changeForce" name="changeForce" type=number min=-100>
+                </div>
+            </div>
+            <div class="mb-3 row">
+                <label class="col-5 col-form-label" for="autoPlayInterval">Interval for auto play (ms):</label>
+                <div class="col-7">
+                    <input class="form-control" type="number" id="autoPlayInterval" name="autoPlayInterval" type=number step=1 min=20>
+                </div>
+            </div>
+            <button id="applyButton" onclick="onClickApply()" class="btn btn-outline-primary">Apply</button>
         </div>
         <hr>
         <h2>Simulation</h2>
-        <label>Create wave by:</label>
-        <div class="form-check">
-            <input class="form-check-input" type="radio" name="exampleRadios" id="exampleRadios1" value="option1"
-                checked>
-            <label class="form-check-label" for="exampleRadios1">
-                Adding water (changing height)
-            </label>
-            <input type="number" id="changeHeight" name="changeHeight" type=number step=0 min=10>
-        </div>
-        <div class="form-check">
-            <input class="form-check-input" type="radio" name="exampleRadios" id="exampleRadios2" value="option2">
-            <label class="form-check-label" for="exampleRadios2">
-                Applying force (changing velocity)
-            </label>
-            <input type="number" id="changeForce" name="changeForce" type=number step=0.01>
-        </div>
-        <label for="autoPlayInterval">interval for auto play (ms):</label>
-        <input type="number" id="autoPlayInterval" name="autoPlayInterval" type=number step=1 min=20>
-        <br><br>
         <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" id="flexSwitchCheckDefault" onclick="onDebugViewSwitch(this);">
+            <input class="form-check-input" type="checkbox" id="flexSwitchCheckDefault"
+                onclick="onDebugViewSwitch(this);">
             <label class="form-check-label" for="flexSwitchCheckDefault">Debug view</label>
         </div>
         <div class="card" id="debug-view-container" hidden=true>
             <div class="card-body">
-              <h5 class="card-title">Debug view</h5>
-              <h6 class="card-subtitle mb-2 text-muted">u array</h6>
-              <p class="card-text" id="debug-u-array"></p>
-              <h6 class="card-subtitle mb-2 text-muted">v array</h6>
-              <p class="card-text" id="debug-v-array"></p>
+                <h5 class="card-title">Debug view</h5>
+                <h6 class="card-subtitle mb-2 text-muted">u array</h6>
+                <p class="card-text" id="debug-u-array"></p>
+                <h6 class="card-subtitle mb-2 text-muted">v array</h6>
+                <p class="card-text" id="debug-v-array"></p>
             </div>
-          </div>
-        <br><br>
+        </div>
+        <p>
+            Click on a column to create a wave.
+        </p>
         <div class="buttons">
             <button id="cycleButton" onclick="onClickCycle()" class="btn btn-outline-secondary">Cycle</button>
-            <button onclick="onClickCreateWave()" class="btn btn-outline-secondary">CreateWave</button>
-            <button id="toggleAutoPlayButton" onclick="onClickToogleAutoPlay()" class="btn btn-outline-primary">Start
-                AutoPlay</button>
+            <button id="toggleAutoPlayButton" onclick="onClickToogleAutoPlay()" class="btn btn-outline-primary">Start</button>
         </div>
         <div class="canvas-container">
             <canvas id="canvas"></canvas>

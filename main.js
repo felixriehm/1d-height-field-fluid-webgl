@@ -8,6 +8,7 @@ var waveColumnsWidth = canvasWidth / waveColumnsCount;
 var waveColumnsInitalHeight = canvasHeight / 3;
 var waveColumnsGap = 2;
 var waveColumnsColor = [0.14, 0.35, 0.47, 1];
+var waveColumnsHoveredColor = [1, 0, 0, 1];
 var autoPlayInterval = 100;
 var interactionAddWater = 125;
 var interactionApplyForce = -14;
@@ -20,10 +21,16 @@ var dt = 2; // delta time, condition: dt < h/c
 
 // Application variables
 var matrixLocation;
+var colorLocation;
 var gl; // GL context
 var stopAutoPlay = true;
-var cycleWaveTimer;
 var debugView = false;
+var createWaveByAddingWater = true;
+var boundaryConditionReflacting = true;
+var hoveredColumn;
+var selectedColumn;
+var then = 0;
+var intervalDeltaTime = 0;
 
 // UI elements
 var htmlToggleAutoPlayButton,
@@ -72,10 +79,10 @@ function main() {
   htmlCanvasHeight = document.querySelector("#canvasHeight");
   htmlCanvasWidth = document.querySelector("#canvasWidth");
   htmlAutoPlayInterval.value = autoPlayInterval;
-  htmlInitialWaterHeight.value = waveColumnsInitalHeight;waveColumnsCount
+  htmlInitialWaterHeight.value = waveColumnsInitalHeight;
   htmlWaveColumnsCount.value = waveColumnsCount;
   htmlWaveVelocity.value = c;
-  htmlWaveColumsWidth.innerText = h;
+  htmlWaveColumsWidth.value = h;
   htmlDampingScaling.value = s;
   htmlDeltaTime.value = dt;
   htmlChangeHeight.value = interactionAddWater;
@@ -83,6 +90,21 @@ function main() {
   htmlCanvasHeight.innerText = canvasHeight;
   htmlCanvasWidth.innerText = canvasWidth;
   updatedebugView();
+
+  gl.canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    var mouseX = e.clientX - rect.left;
+
+    hoveredColumn = Number.parseInt(mouseX / waveColumnsWidth);
+  });
+
+  gl.canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    var mouseX = e.clientX - rect.left;
+
+    selectedColumn = Number.parseInt(mouseX / waveColumnsWidth);
+    createWave(selectedColumn);
+  });
 
   // setup GLSL program
   var program = webglUtils.createProgramFromScripts(gl, ["vertex-shader-2d", "fragment-shader-2d"]);
@@ -92,7 +114,7 @@ function main() {
   matrixLocation = gl.getUniformLocation(program, "u_matrix");
 
   // lookup uniforms
-  var colorLocation = gl.getUniformLocation(program, "u_color");
+  colorLocation = gl.getUniformLocation(program, "u_color");
 
   // Create a buffer to put positions in
   var positionBuffer = gl.createBuffer();
@@ -131,14 +153,24 @@ function main() {
     gl.vertexAttribPointer(
         positionLocation, size, type, normalize, stride, offset);
 
-    // set the color
-    gl.uniform4fv(colorLocation, waveColumnsColor);
-
-    drawColumns();
+    requestAnimationFrame(drawColumns);
   }
 }
 
-function drawColumns() {
+function drawColumns(now) {
+  if(!stopAutoPlay) {
+    intervalDeltaTime = intervalDeltaTime + (now - then);
+
+    if(intervalDeltaTime >= autoPlayInterval) {
+      intervalDeltaTime = 0;
+      stepWave();
+      updatedebugView();
+    }
+
+    then = now;
+  }
+
+
   var primitiveType = gl.TRIANGLES;
   var offset = 0;
   var count = 6;
@@ -153,24 +185,40 @@ function drawColumns() {
 
     gl.uniformMatrix3fv(matrixLocation, false, matrix);
 
+    if(index === hoveredColumn){
+      gl.uniform4fv(colorLocation, waveColumnsHoveredColor);
+    } else {
+      gl.uniform4fv(colorLocation, waveColumnsColor);
+    }
+
     gl.drawArrays(primitiveType, offset, count);
   }
+
+  requestAnimationFrame(drawColumns);
 }
 
 function stepWave(){
   var uNew = Array(waveColumnsCount);
   for (let i = 0; i < u.length; i++) {
 
-    // clamping
+    // boundary
     var u1, u2;
     if(i === 0) {
-      u1 = u[i];
+      if(boundaryConditionReflacting) {
+        u1 = u[i];
+      } else {
+        u1 = u[u.length-1];
+      }
     } else {
       u1 = u[i-1];
     }
     
     if(i === u.length - 1) {
-      u2 = u[i];
+      if(boundaryConditionReflacting) {
+        u2 = u[i];
+      } else {
+        u2 = u[0];
+      }
     } else {
       u2 = u[i+1];
     }
@@ -189,28 +237,42 @@ function onClickCycle() {
 }
 
 function cycleWave() {
-  stepWave();
-  drawColumns();
-  updatedebugView();
+  if(stopAutoPlay) {
+    stepWave();
+    drawColumns();
+    updatedebugView();
+  }
+  
 }
 
-function onClickCreateWave() {
-  u[20] = interactionAddWater;
-  drawColumns();
-  updatedebugView();
+function createWave(column) {
+  if(createWaveByAddingWater){
+    u[column] = interactionAddWater;
+  } else {
+    v[column] = interactionApplyForce;
+  }
+  
+  if(stopAutoPlay){
+    stopAutoPlay = false;
+    startAutoPlay();
+  }
 }
 
 function onClickToogleAutoPlay() {
   stopAutoPlay = !stopAutoPlay;
   if(!stopAutoPlay){
-    htmlToggleAutoPlayButton.innerText = "Stop AutoPlay";
-    htmlCycleButton.disabled = true;
-    cycleWaveTimer = setInterval(cycleWave, autoPlayInterval);
+    startAutoPlay();
   }else {
-    toggleAutoPlayButton.innerText = "Start AutoPlay";
+    toggleAutoPlayButton.innerText = "Start";
     htmlCycleButton.disabled = false;
-    clearInterval(cycleWaveTimer)
   }
+}
+
+function startAutoPlay(){
+    htmlToggleAutoPlayButton.innerText = "Stop";
+    htmlCycleButton.disabled = true;
+    then = 0;
+    intervalDeltaTime = 0;
 }
 
 // Fill the buffer with the values that define a column.
@@ -243,6 +305,88 @@ function updatedebugView(){
     u.forEach((number,index) => {uString = uString + "[" + index + "] " + Number(number).toFixed(2) + ", "})
     htmlDebugUArrayHtmlEl.innerText = uString;
   }
+}
+
+function onClickApply(){
+
+  var newAutoPlayInterval = Number.parseInt(htmlAutoPlayInterval.value);
+  if(newAutoPlayInterval && newAutoPlayInterval >= 20 && newAutoPlayInterval <= 10000) {
+    autoPlayInterval = newAutoPlayInterval;
+    htmlAutoPlayInterval.value = newAutoPlayInterval;
+  } else {
+    htmlAutoPlayInterval.value = autoPlayInterval;
+  }
+
+  var newWaveColumnsInitalHeight = Number.parseInt(htmlInitialWaterHeight.value);
+  if(newWaveColumnsInitalHeight && newWaveColumnsInitalHeight >= 10) {
+    waveColumnsInitalHeight = newWaveColumnsInitalHeight;
+    htmlInitialWaterHeight.value = newWaveColumnsInitalHeight;
+  } else {
+    htmlInitialWaterHeight.value = waveColumnsInitalHeight;
+  }
+
+  var newWaveColumnsCount = Number.parseInt(htmlWaveColumnsCount.value);
+  if(newWaveColumnsCount && newWaveColumnsCount >= 10 && newWaveColumnsCount <= 100) {
+    waveColumnsCount = newWaveColumnsCount;
+    htmlWaveColumnsCount.value = newWaveColumnsCount;
+    waveColumnsWidth = canvasWidth / waveColumnsCount;
+    h = waveColumnsWidth;
+    htmlWaveColumsWidth.value = h;
+  } else {
+    htmlWaveColumnsCount.value = waveColumnsCount;
+    htmlWaveColumsWidth.value = h;
+  }
+
+  var newC = Number.parseFloat(htmlWaveVelocity.value);
+  var newDt = Number.parseFloat(htmlDeltaTime.value);
+  if(newC && newC >= 0.01 && newC <= 1000 && newDt && newDt >= 0.01 && newDt <= 1000 && newC < h / newDt && newDt < h/newC) {
+      c = newC;
+      dt = newDt;
+      htmlWaveVelocity.value = newC;
+      htmlDeltaTime.value = newDt;
+  } else {
+    htmlWaveVelocity.value = c;
+    htmlDeltaTime.value = dt;
+  }
+
+  var newS = Number.parseFloat(htmlDampingScaling.value);
+  if(newS && newS >= 0.01 && newS < 1) {
+    s = newS;
+    htmlDampingScaling.value = newS;
+  } else {
+    htmlDampingScaling.value = s;
+  }
+
+  var newInteractionAddWater = Number.parseInt(htmlChangeHeight.value);
+  if(newInteractionAddWater && newInteractionAddWater >= 1 && newInteractionAddWater <= 150) {
+    interactionAddWater = newInteractionAddWater;
+    htmlChangeHeight.value = newInteractionAddWater;
+  } else {
+    htmlChangeHeight.value = interactionAddWater;
+  }
+
+  var newInteractionApplyForce = Number.parseInt(htmlChangeForce.value);
+  if(newInteractionApplyForce && newInteractionApplyForce >= -100 && newInteractionApplyForce <= 100) {
+    interactionApplyForce = newInteractionApplyForce;
+    htmlChangeForce.value = newInteractionApplyForce;
+  } else {
+    htmlChangeForce.value = interactionApplyForce;
+  }
+
+  createWaveByAddingWater = document.querySelector("#changeHeightRadio").checked;
+  boundaryConditionReflacting = document.querySelector("#boundaryReflacting").checked;
+
+  u = Array(waveColumnsCount).fill(waveColumnsInitalHeight);
+  v = Array(waveColumnsCount).fill(0);
+
+  if(!stopAutoPlay){
+    stopAutoPlay = true;
+    toggleAutoPlayButton.innerText = "Start AutoPlay";
+    htmlCycleButton.disabled = false;
+  }
+
+  drawColumns();
+  updatedebugView();
 }
 
 main();
