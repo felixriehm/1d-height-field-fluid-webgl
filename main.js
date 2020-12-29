@@ -10,7 +10,7 @@ var waveColumnsGap = 2;
 var waveColumnsColor = [0.14, 0.35, 0.47, 1];
 var waveColumnsHoveredColor = [1, 0, 0, 1];
 var autoPlayInterval = 100;
-var interactionAddWater = 125;
+var interactionAddWater = 75;
 var interactionApplyForce = -14;
 var u = Array(waveColumnsCount).fill(waveColumnsInitalHeight); // height field array
 var c = 4; // wave velocity, condition: c < h/dt
@@ -201,7 +201,7 @@ function stepWave(){
   var uNew = Array(waveColumnsCount);
   for (let i = 0; i < u.length; i++) {
 
-    // boundary
+    // boundary condition
     var u1, u2;
     if(i === 0) {
       if(boundaryConditionReflacting) {
@@ -223,10 +223,15 @@ function stepWave(){
       u2 = u[i+1];
     }
 
-    // calculate new height
+    // calculate new height + damping
     var f = Math.pow(c,2) * (u1 + u2 - 2*u[i]) / Math.pow(h,2)
     v[i] = s * (v[i] + f * dt);
     uNew[i] = u[i] + v[i] * dt;
+
+    // bottom condition
+    if(uNew[i] < 0) {
+      uNew[i] = 0;
+    }
   }
 
   u = uNew;
@@ -247,8 +252,18 @@ function cycleWave() {
 
 function createWave(column) {
   if(createWaveByAddingWater){
-    u[column] = interactionAddWater;
+    var evenlyDistrubutedWater = interactionAddWater / (u.length - 1);
+
+    // ensure no water loss or gain
+    for (let i = 0; i < u.length; i++) {
+      if(i !== column) {
+        u[i] += evenlyDistrubutedWater * -1;
+      } else {
+        u[column] += interactionAddWater;
+      }
+    }
   } else {
+    // water will decrease or increase with this
     v[column] = interactionApplyForce;
   }
   
@@ -308,7 +323,6 @@ function updatedebugView(){
 }
 
 function onClickApply(){
-
   var newAutoPlayInterval = Number.parseInt(htmlAutoPlayInterval.value);
   if(newAutoPlayInterval && newAutoPlayInterval >= 20 && newAutoPlayInterval <= 10000) {
     autoPlayInterval = newAutoPlayInterval;
@@ -326,7 +340,7 @@ function onClickApply(){
   }
 
   var newWaveColumnsCount = Number.parseInt(htmlWaveColumnsCount.value);
-  if(newWaveColumnsCount && newWaveColumnsCount >= 10 && newWaveColumnsCount <= 100) {
+  if(newWaveColumnsCount && newWaveColumnsCount >= 10 && newWaveColumnsCount <= 80) {
     waveColumnsCount = newWaveColumnsCount;
     htmlWaveColumnsCount.value = newWaveColumnsCount;
     waveColumnsWidth = canvasWidth / waveColumnsCount;
